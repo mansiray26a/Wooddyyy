@@ -65,36 +65,21 @@ Say goodbye to cold, robotic, notification-heavy dashboards. Woody pairs a **Nod
 
 ## ✨ Features
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
 
 ### 🌳 Branching Study Plans
 Carve subjects into digestible routes — map chapters, keywords, and reference material that connect like root branches.
 
-    </td>
-    <td width="50%" valign="top">
-
 ### 📜 Tactile Paper Quizzes
 Create and tackle focused quizzes without timer panic. Perfect for self-evaluation and stress-free revision.
 
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
 
 ### ⏳ Mindful Hourglass Timetable
 Plan your week in customizable focus blocks — no jarring alarms, just a peaceful visual hourglass.
 
-    </td>
-    <td width="50%" valign="top">
-
 ### 🪴 Progress Nursery Dashboard
 Complete topics and quizzes to watch your seedling branch out into a mighty green tree.
 
-    </td>
-  </tr>
-</table>
+
 
 ✅ **JWT authentication** &nbsp;•&nbsp; ✅ **Subjects, topics, quizzes & study plans** &nbsp;•&nbsp; ✅ **Student dashboard, revision & summary tools**
 

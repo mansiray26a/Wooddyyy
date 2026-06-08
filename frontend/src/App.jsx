@@ -81,13 +81,21 @@ function App() {
     return <Dashboard onLogout={handleLogout} user={user} onUserUpdate={setUser} />;
   }
 
+  // Login & register pages get their own full-page layout (no navbar/footer)
+  if (view === 'login' || view === 'register') {
+    return (
+      <main className="main-content">
+        {view === 'login'    && <LoginPage onLoginSuccess={checkSession} />}
+        {view === 'register' && <RegisterPage onRegisterSuccess={checkSession} />}
+      </main>
+    );
+  }
+
   return (
     <div className="app-workspace">
       <Navbar user={user} onLogout={handleLogout} />
       <main className="main-content">
-        {view === 'landing'   && <Landing user={user} />}
-        {view === 'login'     && <LoginPage onLoginSuccess={checkSession} />}
-        {view === 'register'  && <RegisterPage onRegisterSuccess={checkSession} />}
+        {view === 'landing' && <Landing user={user} />}
       </main>
       <Footer />
     </div>
