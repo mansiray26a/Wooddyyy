@@ -5,7 +5,7 @@
 .mode-btn { background: var(--wood-card); border: 2px solid var(--wood-ink); padding: 8px 16px; font-family: var(--heading); font-weight: 700; cursor: pointer; transition: all 0.2s; }
 .mode-btn.mode-active { background: var(--wood-accent); box-shadow: 2px 2px 0 var(--wood-ink); }
 
-.tag-filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tag-filter-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .tag-filter-btn { font-family: var(--heading); font-weight: 600; font-size: 13px; padding: 7px 14px; background: var(--wood-card); cursor: pointer; border: 2px solid var(--wood-ink); transition: all 0.2s; }
 .tag-filter-btn.tag-active { background: var(--wood-primary); box-shadow: 2px 2px 0 var(--wood-ink); }
 .ml-auto { margin-left: auto; }
