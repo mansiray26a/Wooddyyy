@@ -106,6 +106,7 @@ export default function ExamPrepStrat() {
   };
 
   const deleteStrategy = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this exam preparation strategy?')) return;
     try {
       await api.delete(`/api/strategies/${id}`);
       const remaining = strategies.filter(s => s.id !== id);
@@ -148,6 +149,7 @@ export default function ExamPrepStrat() {
   };
 
   const deletePhase = async (phaseId) => {
+    if (!window.confirm('Delete this preparation phase?')) return;
     const nextPhases = strat.phases.filter(p => (p._id || p.id) !== phaseId);
     try {
       const updated = await api.put(`/api/strategies/${activeStrat}`, { phases: nextPhases });
@@ -214,7 +216,7 @@ export default function ExamPrepStrat() {
     setTimeout(() => {
       setUploadStatus('Mapping out preparation phases... 🗺️');
       setTimeout(() => {
-        setUploadStatus('Ready to add your own phases. 🏆');
+        setUploadStatus('Ready! Custom phases are ready to be carved below. 🏆');
         setTimeout(() => {
           setUploading(false);
           setUploadStatus('');
@@ -237,190 +239,211 @@ export default function ExamPrepStrat() {
     <div className="exam-prep-panel">
       <div className="panel-header">
         <h2 className="panel-title">🏆 Exam Preparation Strategy</h2>
-        <p className="panel-subtitle">Build your own exam roadmap from scratch.</p>
+        <p className="panel-subtitle">Create a structured weekly prep plan and syllabus milestones.</p>
       </div>
 
-      {/* Syllabus Upload Block */}
-      <div className="syllabus-upload-card sketch-border sketch-shadow">
-        <div className="upload-header">
-          <span className="upload-icon">📂</span>
-          <div className="upload-text-block">
-            <h3 className="font-bold text-base">Autopilot Exam Planner</h3>
-            <p className="text-xs text-gray-500">Upload your syllabus PDF/Image to prepare your exam phases.</p>
-          </div>
-        </div>
-
-        {uploading ? (
-          <div className="upload-loading-area text-center py-4">
-            <div className="spinner-sketch">🔄</div>
-            <p className="handwritten text-lg mt-2 color-primary">{uploadStatus}</p>
-            <span className="text-xxs text-gray-500">File: {fileName}</span>
-          </div>
-        ) : (
-          <div className="upload-drag-area sketch-border-sm">
-            <label className="upload-label-btn cursor-pointer">
-              <span>📄 Click to Upload Syllabus / Notes</span>
-              <input type="file" onChange={handleSyllabusUpload} accept=".pdf,.png,.jpg,.jpeg,.txt" className="hidden-file-input" />
-            </label>
-            <span className="text-xxs text-gray-500 mt-1">Accepts PDF, JPG, PNG, TXT (Max 5MB)</span>
-          </div>
-        )}
-      </div>
-
-      {/* Add Strategy Form */}
-      <form onSubmit={addStrategy} className="add-strat-form sketch-border sketch-shadow">
-        <h4 className="add-strat-title">➕ Add an Exam Strategy</h4>
-        <div className="add-strat-grid">
-          <div className="form-group-sm">
-            <label className="text-xxs font-bold">Subject *</label>
-            <input value={newSubject} onChange={e => setNewSubject(e.target.value)}
-              placeholder="e.g. Mathematics" className="form-input sketch-border-sm" required />
-          </div>
-          <div className="form-group-sm">
-            <label className="text-xxs font-bold">Exam Date</label>
-            <input type="date" value={newExamDate} onChange={e => setNewExamDate(e.target.value)}
-              className="form-input sketch-border-sm" />
-          </div>
-          <div className="form-group-sm">
-            <label className="text-xxs font-bold">Tab Color</label>
-            <div className="swatch-row">
-              {SWATCHES.map(c => (
-                <button type="button" key={c} onClick={() => setNewColor(c)}
-                  className={`swatch ${newColor === c ? 'swatch-active' : ''}`}
-                  style={{ background: c }} aria-label={`color ${c}`} />
-              ))}
+      <div className="exam-prep-layout">
+        {/* Left Column: Sidebar with selectors & forms */}
+        <div className="exam-prep-sidebar">
+          {/* Subject Tab Selector */}
+          <div className="strat-tabs-section">
+            <h3 className="sidebar-section-title">📚 Active roadmaps</h3>
+            <div className="strat-tabs">
+              {strategies.map(s => {
+                const d = computeDaysLeft(s.examDate);
+                return (
+                  <div key={s.id}
+                    className={`strat-tab sketch-border-sm ${activeStrat === s.id ? 'strat-tab-active' : ''}`}
+                    onClick={() => setActiveStrat(s.id)}
+                    style={{ '--stab-color': s.color }}>
+                    <button className="strat-tab-del" onClick={(e) => { e.stopPropagation(); deleteStrategy(s.id); }} aria-label="delete strategy">✕</button>
+                    <span className="stab-name">{s.subject}</span>
+                    <span className="stab-days" style={{ color: d !== null && d <= 7 ? '#c62828' : 'var(--wood-ink-muted)' }}>
+                      {daysLabel(d)}
+                    </span>
+                  </div>
+                );
+              })}
+              {strategies.length === 0 && (
+                <div className="exam-empty sketch-border-sm">No exam strategies. Create one below!</div>
+              )}
             </div>
           </div>
-        </div>
-        <button type="submit" className="btn-sketch btn-sketch-primary sketch-border-sm sketch-shadow mt-3 w-full justify-center exam-submit-btn">
-          + Add Strategy
-        </button>
-      </form>
 
-      {/* Subject Tab Selector */}
-      <div className="strat-tabs">
-        {strategies.length === 0 ? (
-          <div className="exam-empty sketch-border-sm">No exam strategy added yet.</div>
-        ) : strategies.map(s => {
-          const d = computeDaysLeft(s.examDate);
-          return (
-            <div key={s.id}
-              className={`strat-tab sketch-border sketch-shadow ${activeStrat === s.id ? 'strat-tab-active' : ''}`}
-              onClick={() => setActiveStrat(s.id)}
-              style={{ '--stab-color': s.color }}>
-              <button className="strat-tab-del" onClick={(e) => { e.stopPropagation(); deleteStrategy(s.id); }} aria-label="delete strategy">✕</button>
-              <span className="stab-name">{s.subject}</span>
-              <span className="stab-days" style={{ color: d !== null && d <= 7 ? '#c62828' : 'var(--wood-ink-muted)' }}>
-                {daysLabel(d)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Overall Completion Bar */}
-      <div className="strat-completion-bar-wrap">
-        <span className="strat-completion-label">
-          Strategy Completion: {overallProgress}%{strat ? ` — ${strat.subject}` : ''}
-        </span>
-        <div className="strat-completion-bar sketch-border-sm">
-          <div className="strat-completion-fill" style={{ width: `${overallProgress}%`, background: strat?.color || 'var(--wood-accent)' }}></div>
-        </div>
-      </div>
-
-      {/* Phase Roadmap Cards */}
-      <div className="phases-timeline">
-        {phases.length ? phases.map((p, idx) => {
-          const pId = p._id || p.id;
-          return (
-            <div key={pId} className={`phase-card sketch-border sketch-shadow ${p.done ? 'phase-done' : ''}`}>
-              {idx < phases.length - 1 && <div className="timeline-connector"></div>}
-
-              <div className="phase-header">
-                <div className={`phase-circle sketch-border-sm ${p.done ? 'phase-circle-done' : ''}`} onClick={() => togglePhase(pId)}>
-                  {p.done
-                    ? <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8L7 12L13 4" stroke="#2D2C24" strokeWidth="2.5" strokeLinecap="round" /></svg>
-                    : <span className="phase-num">{idx + 1}</span>
-                  }
-                </div>
-                <div className="phase-title-block" onClick={() => togglePhase(pId)}>
-                  <h4 className="phase-name">{p.phase}</h4>
-                  {p.weeks && <span className="phase-weeks handwritten">{p.weeks}</span>}
-                </div>
-                <span className="phase-toggle-btn" onClick={() => togglePhase(pId)}>{p.done ? '✅ Done' : '○ Mark Done'}</span>
-                <button className="phase-del-btn" onClick={() => deletePhase(pId)} aria-label="delete phase">🗑️</button>
-              </div>
-
-              <ul className="phase-tasks">
-                {p.tasks.map((t, ti) => (
-                  <li key={ti} className="phase-task-item sketch-border-sm">
-                    <span className="task-bullet" style={{ background: strat?.color || 'var(--wood-accent)' }}></span>
-                    <span className="task-text">{t}</span>
-                    <button className="task-del" onClick={() => deleteTask(pId, ti)} aria-label="delete task">✕</button>
-                  </li>
-                ))}
-                <li className="phase-task-add">
-                  <input
-                    value={taskInputs[pId] || ''}
-                    onChange={e => setTaskInputs({ ...taskInputs, [pId]: e.target.value })}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTask(pId); } }}
-                    placeholder="Add a task…" className="form-input sketch-border-sm task-add-input" />
-                  <button type="button" className="task-add-btn sketch-border-sm" onClick={() => addTask(pId)}>+ Add</button>
-                </li>
-              </ul>
-            </div>
-          );
-        }) : <div className="exam-empty sketch-border-sm">{strat ? 'No phases yet — add one below.' : 'Select or add a strategy to see phases.'}</div>}
-      </div>
-
-      {/* Add Phase Form */}
-      {strat && (
-        <form onSubmit={addPhase} className="add-phase-form sketch-border sketch-shadow">
-          <h4 className="add-strat-title">🧩 Add a Phase to {strat.subject}</h4>
-          <div className="add-phase-grid">
+          {/* Add Strategy Form */}
+          <form onSubmit={addStrategy} className="add-strat-form sketch-border-sm">
+            <h4 className="add-strat-title">➕ Add an Exam Strategy</h4>
             <div className="form-group-sm">
-              <label className="text-xxs font-bold">Phase Name *</label>
-              <input value={newPhaseName} onChange={e => setNewPhaseName(e.target.value)}
-                placeholder="e.g. Foundation Building" className="form-input sketch-border-sm" required />
+              <label className="text-xxs font-bold">Subject Name *</label>
+              <input value={newSubject} onChange={e => setNewSubject(e.target.value)}
+                placeholder="e.g. Mathematics" className="form-input sketch-border-sm" required />
             </div>
             <div className="form-group-sm">
-              <label className="text-xxs font-bold">Duration</label>
-              <input value={newPhaseWeeks} onChange={e => setNewPhaseWeeks(e.target.value)}
-                placeholder="e.g. Weeks 1–2" className="form-input sketch-border-sm" />
-            </div>
-            <div className="form-group-sm full-width">
-              <label className="text-xxs font-bold">Tasks (one per line)</label>
-              <textarea value={newPhaseTasks} onChange={e => setNewPhaseTasks(e.target.value)}
-                placeholder={"Revise chapter 1\nSolve 20 practice problems"} rows={3}
+              <label className="text-xxs font-bold">Exam Date</label>
+              <input type="date" value={newExamDate} onChange={e => setNewExamDate(e.target.value)}
                 className="form-input sketch-border-sm" />
             </div>
-          </div>
-          <button type="submit" className="btn-sketch btn-sketch-primary sketch-border-sm sketch-shadow mt-3 w-full justify-center exam-submit-btn">
-            + Add Phase
-          </button>
-        </form>
-      )}
-
-      {/* Cozy Exam Tips Post-It */}
-      <div className="exam-tips-section">
-        <h3 className="card-section-title">📌 Cozy Expert Tips{strat ? ` for ${strat.subject}` : ''}</h3>
-        <div className="tips-grid">
-          {strat?.tips?.length ? strat.tips.map((tip, i) => (
-            <div key={i} className="tip-post-it sketch-border-sm" style={{ transform: `rotate(${i % 2 === 0 ? '-1.5' : '1'}deg)` }}>
-              <span className="tip-pin">📌</span>
-              <button className="tip-del" onClick={() => deleteTip(i)} aria-label="delete tip">✕</button>
-              <p className="tip-text">{tip}</p>
+            <div className="form-group-sm">
+              <label className="text-xxs font-bold">Theme Color</label>
+              <div className="swatch-row">
+                {SWATCHES.map(c => (
+                  <button type="button" key={c} onClick={() => setNewColor(c)}
+                    className={`swatch ${newColor === c ? 'swatch-active' : ''}`}
+                    style={{ background: c }} aria-label={`color ${c}`} />
+                ))}
+              </div>
             </div>
-          )) : <div className="exam-empty sketch-border-sm">{strat ? 'No tips yet — add one below.' : 'Add a strategy to start adding tips.'}</div>}
+            <button type="submit" className="btn-sketch btn-sketch-primary sketch-border-sm sketch-shadow mt-3 w-full justify-center exam-submit-btn">
+              + Add Strategy
+            </button>
+          </form>
+
+          {/* Cozy Exam Tips Section */}
+          <div className="exam-tips-section sketch-border-sm" style={{ padding: '16px', background: 'var(--wood-card)' }}>
+            <h3 className="card-section-title" style={{ fontSize: '15px', marginBottom: '10px' }}>📌 Cozy Expert Tips{strat ? ` for ${strat.subject}` : ''}</h3>
+            <div className="tips-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {strat?.tips?.length ? strat.tips.map((tip, i) => (
+                <div key={i} className="tip-post-it-mini sketch-border-sm" style={{ background: 'var(--note-yellow)', padding: '10px 12px', position: 'relative' }}>
+                  <button className="tip-del" style={{ top: '4px', right: '6px' }} onClick={() => deleteTip(i)} aria-label="delete tip">✕</button>
+                  <p className="tip-text" style={{ fontSize: '13px', margin: 0, paddingRight: '14px' }}>{tip}</p>
+                </div>
+              )) : <div className="exam-empty sketch-border-sm" style={{ padding: '8px', fontSize: '12px' }}>{strat ? 'No custom tips yet.' : 'Select a strategy first.'}</div>}
+            </div>
+
+            {strat && (
+              <form onSubmit={addTip} className="add-tip-form" style={{ marginTop: '12px', display: 'flex', gap: '6px' }}>
+                <input value={newTip} onChange={e => setNewTip(e.target.value)}
+                  placeholder="Write a tip…" className="form-input sketch-border-sm" style={{ flex: 1, minHeight: '34px', fontSize: '12px', padding: '4px 8px' }} />
+                <button type="submit" className="btn-sketch btn-sketch-primary sketch-border-sm sketch-shadow exam-tip-btn" style={{ padding: '4px 10px', fontSize: '12px', minHeight: '34px' }}>+ Add</button>
+              </form>
+            )}
+          </div>
         </div>
 
-        {strat && (
-          <form onSubmit={addTip} className="add-tip-form">
-            <input value={newTip} onChange={e => setNewTip(e.target.value)}
-              placeholder="Write a cozy study tip…" className="form-input sketch-border-sm" />
-            <button type="submit" className="btn-sketch btn-sketch-primary sketch-border-sm sketch-shadow exam-tip-btn">+ Add Tip</button>
-          </form>
-        )}
+        {/* Right Column: Main Roadmap and syllabus details */}
+        <div className="exam-prep-main">
+          {/* Syllabus Upload Block */}
+          <div className="syllabus-upload-card sketch-border sketch-shadow">
+            <div className="upload-header">
+              <span className="upload-icon">📂</span>
+              <div className="upload-text-block">
+                <h3 className="font-bold text-base">Autopilot Exam Planner</h3>
+                <p className="text-xs text-gray-500">Upload your syllabus PDF/Image to prepare your exam phases.</p>
+              </div>
+            </div>
+            {uploading ? (
+              <div className="upload-loading-area text-center py-4">
+                <div className="spinner-sketch">🔄</div>
+                <p className="handwritten text-lg mt-2 color-primary">{uploadStatus}</p>
+                <span className="text-xxs text-gray-500">File: {fileName}</span>
+              </div>
+            ) : (
+              <div className="upload-drag-area sketch-border-sm">
+                <label className="upload-label-btn cursor-pointer">
+                  <span>📄 Click to Upload Syllabus / Notes</span>
+                  <input type="file" onChange={handleSyllabusUpload} accept=".pdf,.png,.jpg,.jpeg,.txt" className="hidden-file-input" />
+                </label>
+                <span className="text-xxs text-gray-500 mt-1">Accepts PDF, JPG, PNG, TXT (Max 5MB)</span>
+              </div>
+            )}
+          </div>
+
+          {strat ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '10px' }}>
+              {/* Overall Completion Bar */}
+              <div className="strat-completion-bar-wrap sketch-border-sm" style={{ padding: '16px', background: 'var(--wood-card)' }}>
+                <span className="strat-completion-label">
+                  Strategy Completion: {overallProgress}% — {strat.subject}
+                </span>
+                <div className="strat-completion-bar sketch-border-sm" style={{ marginTop: '8px' }}>
+                  <div className="strat-completion-fill" style={{ width: `${overallProgress}%`, background: strat.color || 'var(--wood-accent)' }}></div>
+                </div>
+              </div>
+
+              {/* Phase Roadmap Cards */}
+              <div className="phases-timeline">
+                {phases.map((p, idx) => {
+                  const pId = p._id || p.id;
+                  return (
+                    <div key={pId} className={`phase-card sketch-border sketch-shadow ${p.done ? 'phase-done' : ''}`} style={{ marginBottom: '14px' }}>
+                      {idx < phases.length - 1 && <div className="timeline-connector"></div>}
+
+                      <div className="phase-header">
+                        <div className={`phase-circle sketch-border-sm ${p.done ? 'phase-circle-done' : ''}`} onClick={() => togglePhase(pId)}>
+                          {p.done
+                            ? <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8L7 12L13 4" stroke="#2D2C24" strokeWidth="2.5" strokeLinecap="round" /></svg>
+                            : <span className="phase-num">{idx + 1}</span>
+                          }
+                        </div>
+                        <div className="phase-title-block" onClick={() => togglePhase(pId)}>
+                          <h4 className="phase-name">{p.phase}</h4>
+                          {p.weeks && <span className="phase-weeks handwritten">{p.weeks}</span>}
+                        </div>
+                        <span className="phase-toggle-btn" onClick={() => togglePhase(pId)}>{p.done ? '✅ Completed' : '○ Mark Done'}</span>
+                        <button className="phase-del-btn" style={{ marginLeft: '10px' }} onClick={() => deletePhase(pId)} aria-label="delete phase">🗑️</button>
+                      </div>
+
+                      <ul className="phase-tasks" style={{ marginTop: '10px' }}>
+                        {p.tasks.map((t, ti) => (
+                          <li key={ti} className="phase-task-item sketch-border-sm">
+                            <span className="task-bullet" style={{ background: strat.color || 'var(--wood-accent)' }}></span>
+                            <span className="task-text">{t}</span>
+                            <button className="task-del" onClick={() => deleteTask(pId, ti)} aria-label="delete task">✕</button>
+                          </li>
+                        ))}
+                        <li className="phase-task-add">
+                          <input
+                            value={taskInputs[pId] || ''}
+                            onChange={e => setTaskInputs({ ...taskInputs, [pId]: e.target.value })}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTask(pId); } }}
+                            placeholder="Add a milestone task…" className="form-input sketch-border-sm task-add-input" />
+                          <button type="button" className="task-add-btn sketch-border-sm" onClick={() => addTask(pId)}>+ Add</button>
+                        </li>
+                      </ul>
+                    </div>
+                  );
+                })}
+                {phases.length === 0 && (
+                  <div className="exam-empty sketch-border-sm">No phases yet. Build the preparation roadmap below! 🛠️</div>
+                )}
+              </div>
+
+              {/* Add Phase Form */}
+              <form onSubmit={addPhase} className="add-phase-form sketch-border sketch-shadow">
+                <h4 className="add-strat-title">🧩 Add a Preparation Phase to {strat.subject}</h4>
+                <div className="add-phase-grid">
+                  <div className="form-group-sm">
+                    <label className="text-xxs font-bold">Phase Name *</label>
+                    <input value={newPhaseName} onChange={e => setNewPhaseName(e.target.value)}
+                      placeholder="e.g. Foundation Building" className="form-input sketch-border-sm" required />
+                  </div>
+                  <div className="form-group-sm">
+                    <label className="text-xxs font-bold">Duration</label>
+                    <input value={newPhaseWeeks} onChange={e => setNewPhaseWeeks(e.target.value)}
+                      placeholder="e.g. Weeks 1–2" className="form-input sketch-border-sm" />
+                  </div>
+                  <div className="form-group-sm full-width">
+                    <label className="text-xxs font-bold">Milestone Tasks (one per line)</label>
+                    <textarea value={newPhaseTasks} onChange={e => setNewPhaseTasks(e.target.value)}
+                      placeholder={"Read core syllabus chapters\nAttempt 2 full mock papers"} rows={3}
+                      className="form-input sketch-border-sm" />
+                  </div>
+                </div>
+                <button type="submit" className="btn-sketch btn-sketch-primary sketch-border-sm sketch-shadow mt-3 w-full justify-center exam-submit-btn">
+                  + Add Phase to Roadmap
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="exam-empty sketch-border-sm text-center" style={{ padding: '40px', marginTop: '20px', background: 'var(--wood-card)' }}>
+              <span style={{ fontSize: '40px' }}>🏆</span>
+              <h3 style={{ fontSize: '18px', marginTop: '12px' }}>Choose or Create an Exam Strategy</h3>
+              <p className="handwritten" style={{ fontSize: '16px', color: 'var(--wood-ink-muted)', marginTop: '4px' }}>
+                Select a subject roadmap from the left panel, or carve a new strategy branch to build your timeline.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
