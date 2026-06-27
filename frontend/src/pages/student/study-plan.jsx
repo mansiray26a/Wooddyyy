@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api';
+import '../../styles/student/study-plan.css';
 
 export default function StudyPlan() {
   const [subjects, setSubjects] = useState([]);

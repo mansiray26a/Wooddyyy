@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api';
+import '../../styles/student/revision.css';
 
 const tags = ['all', 'must-revise', 'tricky', 'formula'];
 const colors = { yellow: 'var(--note-yellow)', pink: 'var(--note-pink)', green: 'var(--note-green)' };
