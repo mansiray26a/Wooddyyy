@@ -26,6 +26,7 @@ export default function Revision() {
     resource: 'None'
   });
   
+  const [editingNoteId, setEditingNoteId] = useState(null);
   const [flipped, setFlipped] = useState({});
   const [activeResourcePreview, setActiveResourcePreview] = useState(null); // resource file preview name
 
@@ -58,39 +59,84 @@ export default function Revision() {
 
   const toggleFlip = (id) => setFlipped(f => ({ ...f, [id]: !f[id] }));
 
-  const addNote = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.keyword || !form.detail || !form.subject) return;
+    
     try {
       const body = {
         ...form,
-        resource: selectedFileMock || 'None'
+        resource: selectedFileMock || form.resource || 'None'
       };
-      const created = await api.post('/api/revision', body);
-      setNotes(prev => [...prev, {
-        id: created._id,
-        subject: created.subject,
-        keyword: created.keyword,
-        detail: created.detail,
-        tag: created.tag,
-        color: created.color || 'yellow',
-        date: created.date || '',
-        time: created.time || '',
-        resource: created.resource || 'None'
-      }]);
+
+      if (editingNoteId) {
+        // Edit flow
+        const updated = await api.put(`/api/revision/${editingNoteId}`, body);
+        setNotes(prev => prev.map(n => n.id === editingNoteId ? {
+          id: updated._id,
+          subject: updated.subject,
+          keyword: updated.keyword,
+          detail: updated.detail,
+          tag: updated.tag,
+          color: updated.color || 'yellow',
+          date: updated.date || '',
+          time: updated.time || '',
+          resource: updated.resource || 'None'
+        } : n));
+        setEditingNoteId(null);
+      } else {
+        // Create flow
+        const created = await api.post('/api/revision', body);
+        setNotes(prev => [...prev, {
+          id: created._id,
+          subject: created.subject,
+          keyword: created.keyword,
+          detail: created.detail,
+          tag: created.tag,
+          color: created.color || 'yellow',
+          date: created.date || '',
+          time: created.time || '',
+          resource: created.resource || 'None'
+        }]);
+      }
+
       setForm({ subject: '', keyword: '', detail: '', tag: 'must-revise', color: 'yellow', date: '', time: '', resource: 'None' });
       setSelectedFileMock('');
       setShowForm(false);
     } catch (err) {
-      console.error('Failed to create revision note:', err);
+      console.error('Failed to save revision note:', err);
     }
   };
 
+  const handleStartEdit = (note, e) => {
+    if (e) e.stopPropagation();
+    setForm({
+      subject: note.subject,
+      keyword: note.keyword,
+      detail: note.detail,
+      tag: note.tag,
+      color: note.color,
+      date: note.date,
+      time: note.time,
+      resource: note.resource
+    });
+    setEditingNoteId(note.id);
+    setSelectedFileMock(note.resource !== 'None' ? note.resource : '');
+    setShowForm(true);
+    // Scroll to form or top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const deleteNote = async (id, e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this revision card?')) return;
     try {
       await api.delete(`/api/revision/${id}`);
       setNotes(prev => prev.filter(n => n.id !== id));
+      if (editingNoteId === id) {
+        setEditingNoteId(null);
+        setForm({ subject: '', keyword: '', detail: '', tag: 'must-revise', color: 'yellow', date: '', time: '', resource: 'None' });
+      }
     } catch (err) {
       console.error('Failed to delete revision card:', err);
     }
@@ -128,7 +174,7 @@ export default function Revision() {
     <div className="revision-panel">
       <div className="panel-header">
         <h2 className="panel-title">🔁 Revision Desk</h2>
-        <p className="panel-subtitle">Create revision cards from your own notes.</p>
+        <p className="panel-subtitle">Create and practice flashcards to retain core takeaways.</p>
       </div>
 
       {/* Mode Switches */}
@@ -149,7 +195,13 @@ export default function Revision() {
             {t === 'all' ? '📚 All' : t === 'must-revise' ? '⭐ Must Revise' : t === 'tricky' ? '🌀 Tricky' : '📐 Formula'}
           </button>
         ))}
-        <button onClick={() => setShowForm(!showForm)} className="btn-sketch btn-sketch-primary sketch-border-sm sketch-shadow ml-auto">
+        <button onClick={() => {
+          if (showForm) {
+            setEditingNoteId(null);
+            setForm({ subject: '', keyword: '', detail: '', tag: 'must-revise', color: 'yellow', date: '', time: '', resource: 'None' });
+          }
+          setShowForm(!showForm);
+        }} className="btn-sketch btn-sketch-primary sketch-border-sm sketch-shadow ml-auto">
           {showForm ? '✕ Cancel' : '+ New Revision Card'}
         </button>
       </div>
@@ -177,22 +229,22 @@ export default function Revision() {
 
       {/* Add Note Form */}
       {showForm && (
-        <form onSubmit={addNote} className="add-note-form sketch-border sketch-shadow">
+        <form onSubmit={handleSubmit} className="add-note-form sketch-border sketch-shadow">
           <div className="add-note-tape"></div>
           <div className="form-row-2">
             <div className="form-group">
               <label className="form-label">Subject *</label>
-              <input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Subject" className="form-input sketch-border-sm" required />
+              <input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Subject (e.g. History)" className="form-input sketch-border-sm" required />
             </div>
             <div className="form-group">
               <label className="form-label">Keyword / Topic *</label>
-              <input value={form.keyword} onChange={e => setForm({ ...form, keyword: e.target.value })} placeholder="Keyword / Topic" className="form-input sketch-border-sm" required />
+              <input value={form.keyword} onChange={e => setForm({ ...form, keyword: e.target.value })} placeholder="e.g. French Revolution" className="form-input sketch-border-sm" required />
             </div>
           </div>
           
           <div className="form-group">
             <label className="form-label">Revision Details / Core takeaways *</label>
-            <textarea value={form.detail} onChange={e => setForm({ ...form, detail: e.target.value })} placeholder="Revision notes" className="form-input sketch-border-sm" rows={3} required />
+            <textarea value={form.detail} onChange={e => setForm({ ...form, detail: e.target.value })} placeholder="Write key equations, facts, or concepts here..." className="form-input sketch-border-sm" rows={3} required />
           </div>
 
           {/* Sibling File upload for Revision Planning */}
@@ -231,16 +283,16 @@ export default function Revision() {
             </div>
           </div>
           
-          <button type="submit" className="btn-sketch btn-sketch-primary sketch-border sketch-shadow mt-2">Carve This Revision Note</button>
+          <button type="submit" className="btn-sketch btn-sketch-primary sketch-border sketch-shadow mt-2">
+            {editingNoteId ? '💾 Save Changes' : 'Carve This Revision Note'}
+          </button>
         </form>
       )}
 
       {/* VIEW 1: Flashcard Deck view */}
       {viewMode === 'deck' && (
         <div className="flashcards-grid">
-          {filtered.length === 0 ? (
-            <div className="empty-revision-state sketch-border-sm">No revision cards yet. Add one from your own notes.</div>
-          ) : filtered.map(n => (
+          {filtered.map(n => (
             <div key={n.id} className={`flashcard-wrap ${flipped[n.id] ? 'is-flipped' : ''}`} onClick={() => toggleFlip(n.id)}>
               <div className="flashcard-inner">
                 {/* Front */}
@@ -258,7 +310,12 @@ export default function Revision() {
                     </button>
                   )}
                   <p className="card-flip-hint handwritten">tap to reveal ↩</p>
-                  <button className="card-delete-btn" onClick={(e) => deleteNote(n.id, e)}>✕</button>
+                  
+                  {/* Actions */}
+                  <div style={{ position: 'absolute', right: 10, top: 10, display: 'flex', gap: 6 }}>
+                    <button className="sketch-border-sm" style={{ background: '#FFFDF9', cursor: 'pointer', fontSize: 11, padding: '2px 5px', borderRadius: 4 }} onClick={(e) => handleStartEdit(n, e)} title="Edit Note">✏️</button>
+                    <button className="sketch-border-sm" style={{ background: '#FFEDEB', cursor: 'pointer', fontSize: 11, color: '#C62828', padding: '2px 5px', borderRadius: 4 }} onClick={(e) => deleteNote(n.id, e)} title="Delete Note">✕</button>
+                  </div>
                 </div>
                 {/* Back */}
                 <div className="flashcard-face flashcard-back sketch-border sketch-shadow" style={{ background: colors[n.color] || 'var(--note-yellow)' }}>
@@ -270,7 +327,7 @@ export default function Revision() {
                   {n.resource && n.resource !== 'None' && (
                     <button onClick={(e) => { e.stopPropagation(); setActiveResourcePreview(n.resource); }} className="resource-preview-btn-back sketch-border-sm mt-2 justify-center">
                       📁 Open Attached Resource
-                    </button>
+                  </button>
                   )}
                   <p className="card-flip-hint handwritten">tap to flip back ↩</p>
                 </div>
@@ -313,7 +370,10 @@ export default function Revision() {
                       
                       <div className="note-item-status flex flex-col items-end gap-1">
                         <span className="badge-small text-xxs font-bold" style={{ background: tagColors[n.tag] }}>{n.tag}</span>
-                        <button className="note-item-delete-inline mt-4" onClick={(e) => deleteNote(n.id, e)}>✕ Delete</button>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                          <button style={{ background: '#FFFDF9', border: '1.5px solid var(--wood-ink)', cursor: 'pointer', padding: '3px 8px', borderRadius: 4, fontSize: 12 }} onClick={(e) => handleStartEdit(n, e)}>✏️ Edit</button>
+                          <button className="note-item-delete-inline" style={{ color: '#C62828' }} onClick={(e) => deleteNote(n.id, e)}>✕ Delete</button>
+                        </div>
                       </div>
                     </li>
                   ))}
