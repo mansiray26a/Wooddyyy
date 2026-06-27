@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { api } from '../api';
+import React, { useState, useEffect } from 'react';
 import '../styles/login-page.css';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function LoginPage({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -8,6 +9,31 @@ export default function LoginPage({ onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Detect if user was auto-redirected here because their token expired
+  useEffect(() => {
+    const stale = localStorage.getItem('woody-token-was-expired');
+    if (stale) {
+      setSessionExpired(true);
+      localStorage.removeItem('woody-token-was-expired');
+    }
+  }, []);
+
+  /**
+   * We use a raw fetch here (not the api helper) so that a wrong-password 401
+   * does NOT trigger the global logout redirect in api.js.
+   */
+  const doLoginFetch = async (emailVal, passwordVal) => {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailVal, password: passwordVal }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Login failed');
+    return data;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,7 +41,7 @@ export default function LoginPage({ onLoginSuccess }) {
     setError('');
     setFormSubmitted(true);
     try {
-      const data = await api.post('/api/auth/login', { email, password });
+      const data = await doLoginFetch(email, password);
       localStorage.setItem('woody-token', data.token);
       if (onLoginSuccess) await onLoginSuccess();
       window.location.hash = '#student-dashboard';
@@ -29,24 +55,26 @@ export default function LoginPage({ onLoginSuccess }) {
     setError('');
     setFormSubmitted(true);
     try {
-      const data = await api.post('/api/auth/login', { email: 'guest@woody.com', password: 'cozyfocus123' });
+      // Try login first (raw fetch — avoids global 401 redirect)
+      const data = await doLoginFetch('guest@woody.com', 'cozyfocus123');
       localStorage.setItem('woody-token', data.token);
       if (onLoginSuccess) await onLoginSuccess();
       window.location.hash = '#student-dashboard';
     } catch (err) {
-      // If guest doesn't exist, register them automatically
+      // Guest doesn't exist (server restarted) — auto-register
       try {
-        const data = await api.post('/api/auth/register', {
-          fullName: 'Guest Woody',
-          email: 'guest@woody.com',
-          phone: '9876543210',
-          password: 'cozyfocus123'
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fullName: 'Guest Woody', email: 'guest@woody.com', phone: '9876543210', password: 'cozyfocus123' }),
         });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Registration failed');
         localStorage.setItem('woody-token', data.token);
         if (onLoginSuccess) await onLoginSuccess();
         window.location.hash = '#student-dashboard';
       } catch (regErr) {
-        setError(regErr.message || 'Demo desk setup failed.');
+        setError(regErr.message || 'Demo desk setup failed. Is the backend running?');
         setFormSubmitted(false);
       }
     }
@@ -62,6 +90,13 @@ export default function LoginPage({ onLoginSuccess }) {
         </svg>
         <span>Back to Home</span>
       </a>
+
+      {/* Session-expired banner */}
+      {sessionExpired && (
+        <div style={{ background: '#FFF3CD', border: '2px solid #E6A817', borderRadius: 6, padding: '10px 16px', marginBottom: 12, fontFamily: 'var(--heading)', fontSize: 14, color: '#856404', textAlign: 'center' }}>
+          ⏰ Your session expired or the server restarted. Please log in again.
+        </div>
+      )}
 
       {/* Pinned Note Accent */}
       <div className="login-paper sketch-border sketch-shadow">

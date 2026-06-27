@@ -17,9 +17,14 @@ const getHeaders = () => {
  * in a loop of showing errors after a server restart (which wipes the in-memory DB).
  */
 const handle401 = () => {
+  const hadToken = !!localStorage.getItem('woody-token');
   localStorage.removeItem('woody-token');
   // Only redirect if we are not already on the login page
   if (window.location.hash !== '#login') {
+    // Flag the login page to show a "session expired" banner
+    if (hadToken) {
+      localStorage.setItem('woody-token-was-expired', '1');
+    }
     window.location.hash = '#login';
   }
 };
