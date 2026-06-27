@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from './component/navbar.jsx';
 import Footer from './component/footer.jsx';
 import Landing from './pages/landing.jsx';
@@ -13,7 +13,14 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const checkSession = async () => {
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('woody-token');
+    setUser(null);
+    setView('login');
+    window.location.hash = '#login';
+  }, []);
+
+  const checkSession = useCallback(async () => {
     const token = localStorage.getItem('woody-token');
     if (!token) {
       setUser(null);
@@ -23,24 +30,33 @@ function App() {
     try {
       const data = await api.get('/api/auth/me');
       setUser(data.user);
+      // If we have a valid user and we're on the dashboard hash, stay on dashboard
+      if (window.location.hash === '#student-dashboard') {
+        setView('dashboard');
+      }
     } catch (err) {
-      console.error('Session validation failed:', err);
+      // api.js already cleared the token and set hash to #login on 401
+      // We just need to update React state here
+      console.warn('Session check failed:', err.message);
       localStorage.removeItem('woody-token');
       setUser(null);
+      setView('login');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    checkSession();
   }, []);
 
+  // Run session check once on mount
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  // Listen to hash changes for navigation
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
       const token = localStorage.getItem('woody-token');
-      
+
       if (hash === '#login') {
         setView('login');
       } else if (hash === '#register') {
@@ -49,6 +65,7 @@ function App() {
         if (token) {
           setView('dashboard');
         } else {
+          // No token — send to login
           window.location.hash = '#login';
         }
       } else {
@@ -57,40 +74,60 @@ function App() {
     };
 
     window.addEventListener('hashchange', handleHashChange);
-    handleHashChange(); // parse on first load
+    // Run once to handle the initial URL on first load
+    if (!loading) {
+      handleHashChange();
+    }
 
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [user]);
+  }, [loading]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('woody-token');
-    setUser(null);
-    window.location.hash = '#login';
-  };
-
+  // Full-screen loading spinner while checking session
   if (loading) {
     return (
-      <div className="app-workspace loading-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--wood-bg)' }}>
-        <div className="spinner-sketch" style={{ fontSize: '48px', animation: 'spin 1.5s linear infinite' }}>🌿</div>
+      <div
+        className="app-workspace"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          flexDirection: 'column',
+          gap: 16,
+          background: 'var(--wood-bg)',
+        }}
+      >
+        <div style={{ fontSize: '52px', animation: 'spin 1.5s linear infinite' }}>🌿</div>
+        <p style={{ fontFamily: 'var(--heading)', fontSize: 18, color: 'var(--wood-ink-muted)' }}>
+          Opening your cabin…
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  // Dashboard gets its own full-page layout (no shared navbar)
+  // Dashboard — full-page layout (no shared navbar / footer)
   if (view === 'dashboard') {
-    return <Dashboard onLogout={handleLogout} user={user} onUserUpdate={setUser} />;
+    return (
+      <Dashboard
+        onLogout={handleLogout}
+        user={user}
+        onUserUpdate={setUser}
+      />
+    );
   }
 
-  // Login & register pages get their own full-page layout (no navbar/footer)
+  // Auth pages — no navbar / footer
   if (view === 'login' || view === 'register') {
     return (
       <main className="main-content">
-        {view === 'login'    && <LoginPage onLoginSuccess={checkSession} />}
+        {view === 'login' && <LoginPage onLoginSuccess={checkSession} />}
         {view === 'register' && <RegisterPage onRegisterSuccess={checkSession} />}
       </main>
     );
   }
 
+  // Landing page
   return (
     <div className="app-workspace">
       <Navbar user={user} onLogout={handleLogout} />
@@ -103,4 +140,3 @@ function App() {
 }
 
 export default App;
-
